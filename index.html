@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #d0e9ff, #f3d7ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #4a00e0;
+      margin-bottom: 25px;
+    }
+
+    label {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 6px;
+      color: #333;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #4a00e0;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #6a1b9a;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .checkbox-group input {
+      width: auto;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #e3f2fd;
+      color: #0d47a1;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Attendance Tracker</h1>
+
+    <div id="todayInfo"></div>
+
+    <div class="checkbox-group" id="classOverCheckbox" style="display:none;">
+      <label for="classOver">Have today's classes ended?</label>
+      <input type="checkbox" id="classOver" />
+    </div>
+
+    <label for="currPresent">Total Present:</label>
+    <input type="number" id="currPresent" />
+
+    <label for="currClasses">Total Classes:</label>
+    <input type="number" id="currClasses" />
+
+    <label for="scheduleDays">Number of Days (Mon–Fri only):</label>
+    <input type="number" id="scheduleDays" />
+
+    <div id="attendanceInputs"></div>
+
+    <button onclick="calculateAttendance()">✅ Calculate Attendance</button>
+
+    <div id="result" class="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    const classOnDay = [8, 6, 8, 5, 5]; // Mon to Fri (0–4)
+
+    // Map JavaScript day (0-6) to custom start day (1-5)
+    function getStartDay(today, isOver) {
+      if (today >= 6) return 1; // Weekend → Monday
+
+      if (!isOver) return today + 1; // JS day: 0 (Sun) to 6 (Sat), so add 1 to match Mon-Fri
+
+      let nextDay = (today + 1) % 7;
+      while (nextDay >= 5) { // Skip Sat(6), Sun(0)
+        nextDay = (nextDay + 1) % 7;
+      }
+      return nextDay + 1; // Adjust to 1-5 scale
+    }
+
+    function getDayName(day) {
+      return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
+    }
+
+    // Auto-detect and display today's info
+    const jsToday = new Date().getDay(); // 0-6
+    const todayName = getDayName(jsToday);
+    const todayInfo = document.getElementById("todayInfo");
+    const classOverCheckbox = document.getElementById("classOverCheckbox");
+
+    if (jsToday >= 1 && jsToday <= 5) {
+      todayInfo.innerHTML = `<strong>Today is ${todayName}.</strong>`;
+      classOverCheckbox.style.display = "flex";
+    } else {
+      todayInfo.innerHTML = `<strong>Today is ${todayName} (Weekend) — Starting from Monday.</strong>`;
+    }
+
+    // Generate checkboxes when user types day count
+    document.getElementById("scheduleDays").addEventListener("input", () => {
+      const schedule = parseInt(document.getElementById("scheduleDays").value);
+      const container = document.getElementById("attendanceInputs");
+      container.innerHTML = "";
+
+      if (isNaN(schedule) || schedule <= 0) return;
+
+      for (let i = 0; i < schedule; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'checkbox-group';
+        dayDiv.innerHTML = `
+          <label>Day ${i + 1} - Present?</label>
+          <input type="checkbox" class="attendanceDay" />
+        `;
+        container.appendChild(dayDiv);
+      }
+    });
+
+    function calculateAttendance() {
+      const isOver = document.getElementById("classOver").checked;
+      let startDay = getStartDay(jsToday, isOver); // 1-5
+
+      let currPresent = parseInt(document.getElementById("currPresent").value);
+      let currClasses = parseInt(document.getElementById("currClasses").value);
+      const schedule = parseInt(document.getElementById("scheduleDays").value);
+      const checkboxes = document.querySelectorAll(".attendanceDay");
+
+      if (isNaN(currPresent) || isNaN(currClasses) || isNaN(schedule) || checkboxes.length !== schedule) {
+        alert("Please enter all inputs correctly.");
+        return;
+      }
+
+      for (let i = 0; i < schedule; i++) {
+        const dayIndex = (startDay - 1 + i) % 5; // Wrap Mon-Fri
+        const classesToday = classOnDay[dayIndex];
+        const isPresent = checkboxes[i].checked;
+
+        if (isPresent) currPresent += classesToday;
+        currClasses += classesToday;
+      }
+
+      const percentage = ((currPresent / currClasses) * 100).toFixed(2);
+      const resultDiv = document.getElementById("result");
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = `
+        Final Attendance: ${currPresent}/${currClasses} <br>
+        Attendance Percentage: ${percentage}%
+      `;
+    }
+  </script>
+</body>
+</html>
